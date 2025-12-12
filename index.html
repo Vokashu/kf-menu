@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Карл и Фридрих | Чек</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        /* База */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f7; color: #000; padding-top: 80px; padding-bottom: 90px; margin: 0; -webkit-tap-highlight-color: transparent; }
+        
+        /* 1. Верхняя Навигация (УВЕЛИЧЕНА) */
+        .nav-bar { position: fixed; top: 0; left: 0; right: 0; background: #fff; height: 70px; display: flex; align-items: center; overflow-x: auto; white-space: nowrap; z-index: 1000; padding: 0 15px; box-shadow: 0 1px 5px rgba(0,0,0,0.05); }
+        .nav-bar::-webkit-scrollbar { display: none; }
+        /* Кнопки навигации крупнее */
+        .nav-item { display: inline-block; padding: 12px 20px; margin-right: 10px; border-radius: 25px; background: #f0f0f0; color: #555; font-size: 1em; font-weight: 600; text-decoration: none; transition: 0.2s; flex-shrink: 0; }
+        .nav-item.active { background: #333; color: #fff; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
+        .section-header { font-size: 1.4em; font-weight: 800; margin: 30px 0 15px; padding-left: 5px; color: #222; scroll-margin-top: 80px; }
+
+        /* 2. Карточка блюда */
+        .menu-item { display: flex; align-items: center; background: #fff; padding: 12px; margin-bottom: 12px; border-radius: 16px; position: relative; transition: transform 0.1s; border: 1px solid transparent; cursor: pointer; }
+        .menu-item:active { transform: scale(0.98); background: #fafafa; }
+        .menu-item.selected { border: 1px solid #2481cc; background: #f0f8ff; }
+
+        .item-img { width: 70px; height: 70px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; background: #f8f8f8; margin-right: 15px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .item-info { flex-grow: 1; padding-right: 10px; }
+        .item-name { font-weight: 600; font-size: 1.05em; line-height: 1.2; margin-bottom: 5px; color: #333; }
+        .item-price { color: #666; font-weight: 500; font-size: 0.95em; }
+
+        /* Счетчик и кнопка минус на карточке */
+        .item-counter { display: none; align-items: center; gap: 10px; }
+        .menu-item.selected .item-counter { display: flex; }
+        .qty-badge { background: #2481cc; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1em; box-shadow: 0 2px 5px rgba(36, 129, 204, 0.3); }
+        .minus-btn { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 2px solid #ff4b4b; color: #ff4b4b; display: flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: bold; z-index: 5; }
+
+        /* 3. Нижний бар */
+        .cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background-color: #222; padding: 15px 20px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center; z-index: 100; cursor: pointer; color: white; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
+        .cart-total { font-size: 1.2em; font-weight: 700; }
+        .cart-desc { font-size: 0.9em; color: #aaa; margin-left: 10px; }
+        .view-order-btn { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 1em; pointer-events: none; }
+
+        /* 4. Модальное окно (Чек) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: flex-end; backdrop-filter: blur(2px); }
+        .modal-content { background: #f5f5f7; width: 100%; max-height: 90%; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; overflow: hidden; animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .modal-header { background: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .modal-title { font-size: 1.5em; font-weight: 800; }
+        .close-btn { background: #f0f0f0; border: none; width: 35px; height: 35px; border-radius: 50%; font-size: 1.5em; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #555; }
+        
+        .modal-scroll-area { padding: 15px; overflow-y: auto; flex-grow: 1; }
+        
+        /* Элемент в чеке */
+        .order-card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .order-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        .order-name { font-weight: 700; font-size: 1.1em; }
+        .order-total-price { font-weight: 700; color: #2481cc; font-size: 1.1em; }
+        
+        /* Список временных меток с кнопкой удаления */
+        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 0.95em; color: #555; }
+        .history-item:last-child { border-bottom: none; }
+        .delete-single-btn { color: #ff4b4b; background: rgba(255, 75, 75, 0.1); border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8em; font-weight: 600; }
+        
+        .send-btn-container { padding: 20px; background: #fff; border-top: 1px solid #eee; }
+        .send-btn { width: 100%; background: #2481cc; color: white; border: none; padding: 18px; border-radius: 16px; font-size: 1.2em; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-bar" id="nav-bar"></div>
+    <div class="container" id="menu-container"></div>
+
+    <div class="cart-bar" id="cart-bar" style="display: none;" onclick="openCart()">
+        <div>
+            <span class="cart-total" id="cart-total">0 ₽</span>
+            <span class="cart-desc">открыть чек</span>
+        </div>
+        <button class="view-order-btn">Мой заказ</button>
+    </div>
+
+    <div class="modal-overlay" id="cart-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Ваш счет</div>
+                <button class="close-btn" onclick="closeCart()">×</button>
+            </div>
+            <div class="modal-scroll-area" id="order-details-list"></div>
+            <div class="send-btn-container">
+                <button class="send-btn" onclick="sendOrderToBot()">Подтвердить заказ</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="menu_data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
